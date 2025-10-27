@@ -59,7 +59,14 @@ export async function ensureAdminSeed() {
         [devUser, hash],
         (e) => {
           if (e) return reject(e);
-          return resolve();
+          // Log admin stats for diagnostics
+          db.get('SELECT COUNT(*) AS c, GROUP_CONCAT(username) AS users FROM admin', [], (err2, row2) => {
+            if (!err2 && row2) {
+              // eslint-disable-next-line no-console
+              console.log(`[ensureAdminSeed] forceReset applied. admin count=${row2.c}, users=${row2.users || ''}`);
+            }
+            return resolve();
+          });
         }
       );
       return;
@@ -67,10 +74,27 @@ export async function ensureAdminSeed() {
 
     db.get('SELECT COUNT(*) as c FROM admin', [], (err, row) => {
       if (err) return reject(err);
-      if (row.c > 0) return resolve();
+      if (row.c > 0) {
+        // Log existing admins
+        db.get('SELECT COUNT(*) AS c, GROUP_CONCAT(username) AS users FROM admin', [], (err2, row2) => {
+          if (!err2 && row2) {
+            // eslint-disable-next-line no-console
+            console.log(`[ensureAdminSeed] existing admins. admin count=${row2.c}, users=${row2.users || ''}`);
+          }
+          return resolve();
+        });
+        return;
+      }
       db.run('INSERT INTO admin (username, password) VALUES (?, ?)', [devUser, hash], (e) => {
         if (e) return reject(e);
-        resolve();
+        // Log after insert
+        db.get('SELECT COUNT(*) AS c, GROUP_CONCAT(username) AS users FROM admin', [], (err2, row2) => {
+          if (!err2 && row2) {
+            // eslint-disable-next-line no-console
+            console.log(`[ensureAdminSeed] inserted admin. admin count=${row2.c}, users=${row2.users || ''}`);
+          }
+          resolve();
+        });
       });
     });
   });
