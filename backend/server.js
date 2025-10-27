@@ -54,10 +54,25 @@ app.post('/api/login', loginLimiter, async (req, res) => {
 
   db.get('SELECT * FROM admin WHERE username = ?', [username], async (err, row) => {
     if (err) return res.status(500).json({ message: 'Erreur DB', error: err.message });
-    if (!row) return res.status(401).json({ message: 'Identifiants invalides' });
+    if (!row) {
+      // eslint-disable-next-line no-console
+      console.log(`[login] user not found: ${username}`);
+      return res.status(401).json({ message: 'Identifiants invalides' });
+    }
 
-    const ok = await bcrypt.compare(password, row.password);
-    if (!ok) return res.status(401).json({ message: 'Identifiants invalides' });
+    let ok = false;
+    try {
+      ok = await bcrypt.compare(password, row.password);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.log(`[login] bcrypt.compare errored for user=${username}: ${e?.message}`);
+      return res.status(500).json({ message: 'Erreur serveur' });
+    }
+    if (!ok) {
+      // eslint-disable-next-line no-console
+      console.log(`[login] password mismatch for user=${username}`);
+      return res.status(401).json({ message: 'Identifiants invalides' });
+    }
 
     const token = jwt.sign({ id: row.id, username: row.username }, JWT_SECRET, { expiresIn: '2h' });
     res.json({ token });
