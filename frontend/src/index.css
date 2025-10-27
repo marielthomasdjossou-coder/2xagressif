@@ -1,0 +1,12 @@
+@import url('https://fonts.googleapis.com/css2?family=Sedgwick+Ave+Display&family=Montserrat:wght@400;600;700&family=Poppins:wght@400;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: light; }
+
+body { @apply font-poppins text-dark bg-beige100; }
+
+.btn-primary { @apply bg-dark text-white rounded-xl px-5 py-3 hover:bg-black transition; }
+.btn-ghost { @apply border border-beige400 text-beige800 rounded-xl px-5 py-3 hover:bg-beige100 transition; }
+.card { @apply bg-white shadow-lg rounded-2xl p-4 border border-beige200; }
