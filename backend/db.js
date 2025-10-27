@@ -38,6 +38,7 @@ export async function ensureAdminSeed() {
   const isProd = process.env.NODE_ENV === 'production';
   const username = process.env.ADMIN_USER;
   const passwordPlain = process.env.ADMIN_PASS;
+  const forceReset = (process.env.ADMIN_FORCE_RESET || '').toLowerCase() === 'true';
 
   // In production, admin credentials must be provided explicitly
   if (isProd && (!username || !passwordPlain)) {
@@ -50,6 +51,20 @@ export async function ensureAdminSeed() {
   const hash = await bcrypt.hash(devPass, 10);
 
   return new Promise((resolve, reject) => {
+    if (forceReset) {
+      // Upsert admin regardless of existing rows
+      db.run(
+        `INSERT INTO admin (username, password) VALUES (?, ?)
+         ON CONFLICT(username) DO UPDATE SET password = excluded.password`,
+        [devUser, hash],
+        (e) => {
+          if (e) return reject(e);
+          return resolve();
+        }
+      );
+      return;
+    }
+
     db.get('SELECT COUNT(*) as c FROM admin', [], (err, row) => {
       if (err) return reject(err);
       if (row.c > 0) return resolve();
@@ -60,3 +75,4 @@ export async function ensureAdminSeed() {
     });
   });
 }
+
