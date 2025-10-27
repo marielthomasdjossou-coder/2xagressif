@@ -26,6 +26,9 @@ export default function ParfumCard({ parfum }) {
               variants={slowScaleIn}
               src={imageUrl(image)}
               alt={nom}
+              loading="lazy"
+              decoding="async"
+              sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
               className="w-full h-full object-cover group-hover:scale-105 transition duration-900"
             />
           ) : (

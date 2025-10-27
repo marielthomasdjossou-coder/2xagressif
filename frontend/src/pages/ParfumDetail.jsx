@@ -51,7 +51,14 @@ export default function ParfumDetail(){
       <div className="grid md:grid-cols-2 gap-6 items-start">
         <motion.div variants={slowScaleIn} initial="hidden" animate="show" className="rounded-2xl bg-white p-2 flex items-center justify-center h-36 md:h-48">
           {item.image ? (
-            <img src={imageUrl(item.image)} alt={item.nom} className="w-auto max-h-full object-contain" />
+            <img
+              src={imageUrl(item.image)}
+              alt={item.nom}
+              loading="lazy"
+              decoding="async"
+              sizes="(min-width: 1024px) 50vw, 100vw"
+              className="w-auto max-h-full object-contain"
+            />
           ) : (
             <div className="aspect-[4/3] w-full flex items-center justify-center text-gray-400 bg-beige rounded-xl">Aucune image</div>
           )}

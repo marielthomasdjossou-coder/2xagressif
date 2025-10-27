@@ -8,6 +8,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import fs from 'fs';
+import compression from 'compression';
 import { fileURLToPath } from 'url';
 import { db, ensureAdminSeed } from './db.js';
 import parfumsRouter from './routes/parfums.js';
@@ -37,6 +38,7 @@ const __dirname = path.dirname(__filename);
 // Security & logging
 const ORIGIN = process.env.CORS_ORIGIN || '*';
 // Allow images/static to be consumed cross-origin by the frontend dev server (5173)
+app.use(compression());
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' }
 }));
