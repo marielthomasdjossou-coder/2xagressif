@@ -38,6 +38,16 @@ export async function getParfum(id){
   return data;
 }
 
+export async function getParfumsPaged(page = 0, limit = 12){
+  const offset = page * limit;
+  const { data } = await apiClient.get(`/parfums`, { params: { limit, offset } });
+  // When backend is old, it may return an array. Normalize.
+  if (Array.isArray(data)) {
+    return { items: data, total: data.length, limit, offset };
+  }
+  return data; // { items, total, limit, offset }
+}
+
 export async function login(username, password){
   // Use base axios (without redirect interceptor) so UI can show validation errors
   const { data } = await axios.post(`${API}/login`, { username, password });

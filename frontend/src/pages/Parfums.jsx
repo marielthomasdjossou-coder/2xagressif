@@ -1,15 +1,28 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { getParfums } from '../api.js';
+import { getParfumsPaged } from '../api.js';
 import ParfumCard from '../components/ParfumCard.jsx';
 
 export default function Parfums(){
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
+  const [total, setTotal] = useState(0);
+  const limit = 12;
 
   useEffect(()=>{
-    getParfums().then(setItems).finally(()=>setLoading(false));
+    loadPage(0);
   },[]);
+
+  async function loadPage(p){
+    setLoading(p === 0 && items.length === 0);
+    const { items: batch, total: t } = await getParfumsPaged(p, limit);
+    setItems(prev => p === 0 ? batch : [...prev, ...batch]);
+    setTotal(t ?? (p === 0 ? batch.length : (items.length + batch.length)));
+    setPage(p);
+  }
+
+  const canLoadMore = items.length < total;
 
   return (
     <section className="px-4 sm:px-6">
@@ -38,6 +51,13 @@ export default function Parfums(){
         <motion.div layout className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
           {items.map(p => <ParfumCard key={p.id} parfum={p} />)}
         </motion.div>
+      )}
+      {!loading && canLoadMore && (
+        <div className="mt-6 flex justify-center">
+          <button onClick={()=>loadPage(page+1)} className="btn-primary">
+            Afficher plus
+          </button>
+        </div>
       )}
     </section>
   );

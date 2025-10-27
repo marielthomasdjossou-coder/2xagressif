@@ -24,11 +24,31 @@ async function tryUnlink(rel) {
   try { await fs.unlink(abs); } catch (_) { /* ignore */ }
 }
 
-// GET all parfums
-router.get('/', (_req, res) => {
-  db.all('SELECT * FROM parfums ORDER BY id DESC', [], (err, rows) => {
-    if (err) return res.status(500).json({ message: 'Erreur DB', error: err.message });
-    res.json(rows);
+// GET all parfums (optional pagination: ?limit=&offset=)
+router.get('/', (req, res) => {
+  const limit = parseInt(req.query.limit, 10);
+  const offset = parseInt(req.query.offset, 10);
+
+  const hasPaging = Number.isFinite(limit) || Number.isFinite(offset);
+
+  if (!hasPaging) {
+    // Backward compatible: return full array when no pagination is requested
+    db.all('SELECT * FROM parfums ORDER BY id DESC', [], (err, rows) => {
+      if (err) return res.status(500).json({ message: 'Erreur DB', error: err.message });
+      res.json(rows);
+    });
+    return;
+  }
+
+  const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.min(limit, 50)) : 12;
+  const safeOffset = Number.isFinite(offset) ? Math.max(0, offset) : 0;
+
+  db.get('SELECT COUNT(*) AS total FROM parfums', [], (countErr, countRow) => {
+    if (countErr) return res.status(500).json({ message: 'Erreur DB', error: countErr.message });
+    db.all('SELECT * FROM parfums ORDER BY id DESC LIMIT ? OFFSET ?', [safeLimit, safeOffset], (err, rows) => {
+      if (err) return res.status(500).json({ message: 'Erreur DB', error: err.message });
+      res.json({ items: rows, total: countRow.total, limit: safeLimit, offset: safeOffset });
+    });
   });
 });
 
