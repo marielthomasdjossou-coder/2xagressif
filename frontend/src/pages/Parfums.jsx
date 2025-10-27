@@ -15,11 +15,19 @@ export default function Parfums(){
   },[]);
 
   async function loadPage(p){
-    setLoading(p === 0 && items.length === 0);
-    const { items: batch, total: t } = await getParfumsPaged(p, limit);
-    setItems(prev => p === 0 ? batch : [...prev, ...batch]);
-    setTotal(t ?? (p === 0 ? batch.length : (items.length + batch.length)));
-    setPage(p);
+    const showSkeleton = p === 0 && items.length === 0;
+    if (showSkeleton) setLoading(true);
+    try {
+      const { items: batch = [], total: t } = await getParfumsPaged(p, limit);
+      setItems(prev => p === 0 ? batch : [...prev, ...batch]);
+      setTotal(typeof t === 'number' ? t : (p === 0 ? batch.length : (items.length + batch.length)));
+      setPage(p);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('Erreur chargement parfums:', e?.message || e);
+    } finally {
+      if (showSkeleton) setLoading(false);
+    }
   }
 
   const canLoadMore = items.length < total;
@@ -47,10 +55,12 @@ export default function Parfums(){
             </div>
           ))}
         </div>
-      ) : (
+      ) : items.length > 0 ? (
         <motion.div layout className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
           {items.map(p => <ParfumCard key={p.id} parfum={p} />)}
         </motion.div>
+      ) : (
+        <div className="text-center text-gray-500">Aucun parfum à afficher.</div>
       )}
       {!loading && canLoadMore && (
         <div className="mt-6 flex justify-center">
