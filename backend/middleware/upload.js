@@ -1,6 +1,8 @@
 import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import sharp from 'sharp';
+import fs from 'fs/promises';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,3 +27,24 @@ export const upload = multer({
   fileFilter,
   limits: { fileSize: 2 * 1024 * 1024 } // 2MB
 });
+
+// Convert uploaded image to optimized WebP (max width 800), then delete original
+export async function optimizeUpload(file){
+  if (!file?.path) return null;
+  const dir = path.dirname(file.path);
+  const base = path.basename(file.path, path.extname(file.path));
+  const webpPath = path.join(dir, `${base}.webp`);
+  try {
+    await sharp(file.path)
+      .resize({ width: 800, withoutEnlargement: true })
+      .webp({ quality: 76 })
+      .toFile(webpPath);
+    // remove original
+    await fs.unlink(file.path).catch(()=>{});
+    // return relative path like 'uploads/xxx.webp'
+    return path.posix.join('uploads', path.basename(webpPath));
+  } catch (e) {
+    // Fallback: keep original file
+    return path.posix.join('uploads', path.basename(file.path));
+  }
+}

@@ -4,7 +4,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { db } from '../db.js';
-import { upload } from '../middleware/upload.js';
+import { upload, optimizeUpload } from '../middleware/upload.js';
 import { verifyToken } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -70,7 +70,7 @@ router.post('/', verifyToken, upload.single('image'),
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
     const { nom, prix, description = '', details = '' } = req.body;
-    const image = req.file ? path.posix.join('uploads', path.basename(req.file.path)) : null;
+    const image = req.file ? await optimizeUpload(req.file) : null;
 
     db.run('INSERT INTO parfums (nom, prix, description, details, image) VALUES (?, ?, ?, ?, ?)',
       [nom, prix, description, details, image], function (err) {
@@ -92,7 +92,7 @@ router.put('/:id', verifyToken, upload.single('image'),
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
     const { nom, prix, description, details } = req.body;
-    const image = req.file ? path.posix.join('uploads', path.basename(req.file.path)) : undefined;
+    const image = req.file ? await optimizeUpload(req.file) : undefined;
 
     db.get('SELECT * FROM parfums WHERE id = ?', [req.params.id], (err, row) => {
       if (err) return res.status(500).json({ message: 'Erreur DB', error: err.message });
