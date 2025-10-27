@@ -19,7 +19,7 @@ export default function Hero() {
         </motion.div>
         <motion.div variants={slowScaleIn} initial="hidden" animate="show" className="relative flex items-center justify-center">
           <img
-            src={heroImg}
+            src={import.meta.env.PROD ? '/images/hero.webp' : heroImg}
             alt="Flacon de parfum 2XAGRESSIF"
             fetchpriority="high"
             loading="eager"
