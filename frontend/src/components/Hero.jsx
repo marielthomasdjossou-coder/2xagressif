@@ -18,7 +18,15 @@ export default function Hero() {
           </motion.div>
         </motion.div>
         <motion.div variants={slowScaleIn} initial="hidden" animate="show" className="relative flex items-center justify-center">
-          <img className="w-auto max-h-56 md:max-h-80 mx-auto rounded-2xl object-contain bg-white" src={heroImg} alt="Flacon de parfum 2XAGRESSIF" />
+          <img
+            src={heroImg}
+            alt="Flacon de parfum 2XAGRESSIF"
+            fetchpriority="high"
+            loading="eager"
+            decoding="async"
+            sizes="(min-width: 768px) 40vw, 80vw"
+            className="w-auto max-h-56 md:max-h-80 mx-auto rounded-2xl object-contain bg-white"
+          />
         </motion.div>
       </div>
     </section>
