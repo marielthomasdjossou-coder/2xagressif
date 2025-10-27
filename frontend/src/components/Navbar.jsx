@@ -20,7 +20,7 @@ export default function Navbar() {
   return (
     <header className={`${open ? 'bg-white' : 'bg-white/80 backdrop-blur'} sticky top-0 z-50 border-b border-beige200/60`}>
       <div className="container mx-auto px-4 sm:px-6 md:px-8 py-2 sm:py-3 flex items-center justify-between">
-        <Link to="/" className="select-none uppercase font-logo text-xl md:text-2xl -rotate-1 tracking-wide md:tracking-tight text-dark leading-none inline-block">
+        <Link to="/" className="select-none uppercase text-xl md:text-2xl tracking-wide md:tracking-tight text-dark leading-none inline-block">
           <span className="text-beige800">2X</span>
           <span aria-hidden="true" className="mx-1">🪬</span>
           <span>AGRESSIF</span>

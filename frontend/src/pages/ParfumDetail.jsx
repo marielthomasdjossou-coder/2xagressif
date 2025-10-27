@@ -49,7 +49,7 @@ export default function ParfumDetail(){
         <Link to="/parfums" className="text-beige800 hover:underline">Retour</Link>
       </div>
       <div className="grid md:grid-cols-2 gap-6 items-start">
-        <motion.div variants={slowScaleIn} initial="hidden" animate="show" className="rounded-2xl bg-white p-2 flex items-center justify-center h-36 md:h-48">
+        <motion.div variants={slowScaleIn} initial="hidden" animate="show" className="rounded-2xl bg-white p-3 flex items-center justify-center h-64 md:h-[32rem]">
           {item.image ? (
             <img
               src={imageUrl(item.image)}
