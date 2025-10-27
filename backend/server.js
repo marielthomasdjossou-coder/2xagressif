@@ -15,6 +15,10 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 4000;
 
+// Behind Render/Netlify proxies, enable trust proxy so rate-limit can use X-Forwarded-For
+// See: https://express-rate-limit.github.io/ERR_ERL_UNEXPECTED_X_FORWARDED_FOR/
+app.set('trust proxy', 1);
+
 // Enforce JWT secret presence in production
 const JWT_SECRET_ENV = process.env.JWT_SECRET;
 if (!JWT_SECRET_ENV && process.env.NODE_ENV === 'production') {
