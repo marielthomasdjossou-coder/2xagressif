@@ -7,6 +7,7 @@ import path from 'path';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { db, ensureAdminSeed } from './db.js';
 import parfumsRouter from './routes/parfums.js';
@@ -48,8 +49,12 @@ const globalLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
 app.use(globalLimiter);
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false });
 
+// Ensure uploads directory exists (for multer disk storage on Render)
+const uploadsDir = path.join(__dirname, 'uploads');
+try { fs.mkdirSync(uploadsDir, { recursive: true }); } catch (e) { /* ignore */ }
+
 // Static for uploaded images (with cache headers)
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'), { maxAge: '7d', immutable: true }));
+app.use('/uploads', express.static(uploadsDir, { maxAge: '7d', immutable: true }));
 
 // Auth: login
 app.post('/api/login', loginLimiter, async (req, res) => {
