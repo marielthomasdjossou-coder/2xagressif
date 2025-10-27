@@ -20,7 +20,7 @@ export default function ParfumCard({ parfum }) {
       className="card group p-3 sm:p-4"
     >
       <Link to={`/parfums/${id}`} className="block">
-        <div className="aspect-[4/3] overflow-hidden rounded-xl bg-beige">
+        <div className="aspect-[1/1] overflow-hidden rounded-xl bg-beige">
           {image ? (
             <motion.img
               variants={slowScaleIn}
