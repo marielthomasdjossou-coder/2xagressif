@@ -1,7 +1,6 @@
 import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import sharp from 'sharp';
 import fs from 'fs/promises';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -35,6 +34,10 @@ export async function optimizeUpload(file){
   const base = path.basename(file.path, path.extname(file.path));
   const webpPath = path.join(dir, `${base}.webp`);
   try {
+    // Lazy import sharp to avoid crash if installation failed
+    const sharpMod = await import('sharp').catch(()=>null);
+    const sharp = sharpMod?.default || sharpMod; // esm/cjs compat
+    if (!sharp) throw new Error('sharp-not-available');
     await sharp(file.path)
       .resize({ width: 800, withoutEnlargement: true })
       .webp({ quality: 76 })
