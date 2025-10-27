@@ -39,7 +39,7 @@ export default function Parfums(){
         <p className="text-beige600 text-sm md:text-base">Explorez notre collection</p>
       </div>
       {loading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
           {Array.from({length: 6}).map((_,i)=> (
             <div key={i} className="card p-3 sm:p-4">
               <div className="aspect-[4/3] rounded-xl bg-beige200 animate-pulse" style={{animationDuration:'1.3s'}}></div>
@@ -56,7 +56,7 @@ export default function Parfums(){
           ))}
         </div>
       ) : items.length > 0 ? (
-        <motion.div layout className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
+        <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
           {items.map(p => <ParfumCard key={p.id} parfum={p} />)}
         </motion.div>
       ) : (
