@@ -21,7 +21,7 @@ export default function ParfumCard({ parfum }) {
     >
       <div className="flex items-start gap-3 md:block">
         <Link to={`/parfums/${id}`} className="block shrink-0">
-          <div className="w-[9.5rem] h-[9.5rem] md:w-auto md:h-auto md:aspect-[1/1] overflow-hidden rounded-xl bg-beige">
+          <div className="w-32 h-40 md:w-auto md:h-auto md:aspect-[1/1] overflow-hidden rounded-xl bg-beige">
             {image ? (
               <motion.img
                 variants={slowScaleIn}
@@ -29,7 +29,7 @@ export default function ParfumCard({ parfum }) {
                 alt={nom}
                 loading="lazy"
                 decoding="async"
-                sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 152px"
+                sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 128px"
                 className="w-full h-full object-cover group-hover:scale-105 transition duration-900"
               />
             ) : (
