@@ -52,24 +52,23 @@ export async function ensureAdminSeed() {
 
   return new Promise((resolve, reject) => {
     if (forceReset) {
-      // Upsert admin regardless of existing rows
-      db.run(
-        `INSERT INTO admin (username, password) VALUES (?, ?)
-         ON CONFLICT(username) DO UPDATE SET password = excluded.password`,
-        [devUser, hash],
-        (e) => {
-          if (e) return reject(e);
-          // Log admin stats for diagnostics
-          db.get('SELECT COUNT(*) AS c, GROUP_CONCAT(username) AS users FROM admin', [], (err2, row2) => {
-            if (!err2 && row2) {
-              // eslint-disable-next-line no-console
-              console.log(`[ensureAdminSeed] forceReset applied. admin count=${row2.c}, users=${row2.users || ''}`);
-            }
-            return resolve();
+      // HARD RESET: clear any existing admins then insert the provided one
+      db.serialize(() => {
+        db.run('DELETE FROM admin', [], (delErr) => {
+          if (delErr) return reject(delErr);
+          db.run('INSERT INTO admin (username, password) VALUES (?, ?)', [devUser, hash], (insErr) => {
+            if (insErr) return reject(insErr);
+            db.get('SELECT COUNT(*) AS c, GROUP_CONCAT(username) AS users FROM admin', [], (err2, row2) => {
+              if (!err2 && row2) {
+                // eslint-disable-next-line no-console
+                console.log(`[ensureAdminSeed] forceReset applied (HARD). admin count=${row2.c}, users=${row2.users || ''}`);
+              }
+              return resolve();
+            });
           });
-        }
-      );
-      return;
+        });
+      });
+      return;      
     }
 
     db.get('SELECT COUNT(*) as c FROM admin', [], (err, row) => {
