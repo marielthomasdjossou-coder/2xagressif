@@ -10,7 +10,7 @@ import rateLimit from 'express-rate-limit';
 import fs from 'fs';
 import compression from 'compression';
 import { fileURLToPath } from 'url';
-import { db, ensureAdminSeed } from './db.js';
+import { getOne, ensureAdminSeed } from './db.js';
 import parfumsRouter from './routes/parfums.js';
 
 dotenv.config();
@@ -63,31 +63,24 @@ app.post('/api/login', loginLimiter, async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ message: 'username et password requis' });
 
-  db.get('SELECT * FROM admin WHERE username = ?', [username], async (err, row) => {
-    if (err) return res.status(500).json({ message: 'Erreur DB', error: err.message });
+  try {
+    const row = await getOne('SELECT * FROM admin WHERE username = ?', [username]);
     if (!row) {
       // eslint-disable-next-line no-console
       console.log(`[login] user not found: ${username}`);
       return res.status(401).json({ message: 'Identifiants invalides' });
     }
-
-    let ok = false;
-    try {
-      ok = await bcrypt.compare(password, row.password);
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.log(`[login] bcrypt.compare errored for user=${username}: ${e?.message}`);
-      return res.status(500).json({ message: 'Erreur serveur' });
-    }
+    const ok = await bcrypt.compare(password, row.password);
     if (!ok) {
       // eslint-disable-next-line no-console
       console.log(`[login] password mismatch for user=${username}`);
       return res.status(401).json({ message: 'Identifiants invalides' });
     }
-
     const token = jwt.sign({ id: row.id, username: row.username }, JWT_SECRET, { expiresIn: '2h' });
-    res.json({ token });
-  });
+    return res.json({ token });
+  } catch (err) {
+    return res.status(500).json({ message: 'Erreur DB', error: err.message });
+  }
 });
 
 // Routes parfums

@@ -3,7 +3,7 @@ import { body, validationResult } from 'express-validator';
 import path from 'path';
 import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
-import { db } from '../db.js';
+import { isPg, query, getOne, run } from '../db.js';
 import { upload, optimizeUpload } from '../middleware/upload.js';
 import { verifyToken } from '../middleware/auth.js';
 
@@ -25,40 +25,36 @@ async function tryUnlink(rel) {
 }
 
 // GET all parfums (optional pagination: ?limit=&offset=)
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   const limit = parseInt(req.query.limit, 10);
   const offset = parseInt(req.query.offset, 10);
 
   const hasPaging = Number.isFinite(limit) || Number.isFinite(offset);
 
-  if (!hasPaging) {
-    // Backward compatible: return full array when no pagination is requested
-    db.all('SELECT * FROM parfums ORDER BY id DESC', [], (err, rows) => {
-      if (err) return res.status(500).json({ message: 'Erreur DB', error: err.message });
-      res.json(rows);
-    });
-    return;
+  try {
+    if (!hasPaging) {
+      const rows = await query('SELECT * FROM parfums ORDER BY id DESC', []);
+      return res.json(rows);
+    }
+    const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.min(limit, 50)) : 12;
+    const safeOffset = Number.isFinite(offset) ? Math.max(0, offset) : 0;
+    const countRow = await getOne(isPg ? 'SELECT COUNT(*)::int AS total FROM parfums' : 'SELECT COUNT(*) AS total FROM parfums', []);
+    const rows = await query('SELECT * FROM parfums ORDER BY id DESC LIMIT ? OFFSET ?', [safeLimit, safeOffset]);
+    return res.json({ items: rows, total: countRow?.total ?? 0, limit: safeLimit, offset: safeOffset });
+  } catch (e) {
+    return res.status(500).json({ message: 'Erreur DB', error: e.message });
   }
-
-  const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.min(limit, 50)) : 12;
-  const safeOffset = Number.isFinite(offset) ? Math.max(0, offset) : 0;
-
-  db.get('SELECT COUNT(*) AS total FROM parfums', [], (countErr, countRow) => {
-    if (countErr) return res.status(500).json({ message: 'Erreur DB', error: countErr.message });
-    db.all('SELECT * FROM parfums ORDER BY id DESC LIMIT ? OFFSET ?', [safeLimit, safeOffset], (err, rows) => {
-      if (err) return res.status(500).json({ message: 'Erreur DB', error: err.message });
-      res.json({ items: rows, total: countRow.total, limit: safeLimit, offset: safeOffset });
-    });
-  });
 });
 
 // GET one parfum
-router.get('/:id', (req, res) => {
-  db.get('SELECT * FROM parfums WHERE id = ?', [req.params.id], (err, row) => {
-    if (err) return res.status(500).json({ message: 'Erreur DB', error: err.message });
+router.get('/:id', async (req, res) => {
+  try {
+    const row = await getOne('SELECT * FROM parfums WHERE id = ?', [req.params.id]);
     if (!row) return res.status(404).json({ message: 'Introuvable' });
-    res.json(row);
-  });
+    return res.json(row);
+  } catch (e) {
+    return res.status(500).json({ message: 'Erreur DB', error: e.message });
+  }
 });
 
 // POST create parfum
@@ -69,17 +65,20 @@ router.post('/', verifyToken, upload.single('image'),
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    const { nom, prix, description = '', details = '' } = req.body;
-    const image = req.file ? await optimizeUpload(req.file) : null;
-
-    db.run('INSERT INTO parfums (nom, prix, description, details, image) VALUES (?, ?, ?, ?, ?)',
-      [nom, prix, description, details, image], function (err) {
-        if (err) return res.status(500).json({ message: 'Erreur DB', error: err.message });
-        db.get('SELECT * FROM parfums WHERE id = ?', [this.lastID], (e, row) => {
-          if (e) return res.status(500).json({ message: 'Erreur DB', error: e.message });
-          res.status(201).json(row);
-        });
-      });
+    try {
+      const { nom, prix, description = '', details = '' } = req.body;
+      const image = req.file ? await optimizeUpload(req.file) : null;
+      if (isPg) {
+        const rows = await query('INSERT INTO parfums (nom, prix, description, details, image) VALUES (?, ?, ?, ?, ?) RETURNING *', [nom, prix, description, details, image]);
+        return res.status(201).json(rows[0]);
+      } else {
+        const r = await run('INSERT INTO parfums (nom, prix, description, details, image) VALUES (?, ?, ?, ?, ?)', [nom, prix, description, details, image]);
+        const row = await getOne('SELECT * FROM parfums WHERE id = ?', [r.lastID]);
+        return res.status(201).json(row);
+      }
+    } catch (e) {
+      return res.status(500).json({ message: 'Erreur DB', error: e.message });
+    }
   }
 );
 
@@ -91,13 +90,11 @@ router.put('/:id', verifyToken, upload.single('image'),
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    const { nom, prix, description, details } = req.body;
-    const image = req.file ? await optimizeUpload(req.file) : undefined;
-
-    db.get('SELECT * FROM parfums WHERE id = ?', [req.params.id], (err, row) => {
-      if (err) return res.status(500).json({ message: 'Erreur DB', error: err.message });
+    try {
+      const { nom, prix, description, details } = req.body;
+      const image = req.file ? await optimizeUpload(req.file) : undefined;
+      const row = await getOne('SELECT * FROM parfums WHERE id = ?', [req.params.id]);
       if (!row) return res.status(404).json({ message: 'Introuvable' });
-
       const newRow = {
         nom: nom ?? row.nom,
         prix: prix ?? row.prix,
@@ -105,34 +102,38 @@ router.put('/:id', verifyToken, upload.single('image'),
         details: details ?? row.details,
         image: image ?? row.image
       };
-
-      db.run('UPDATE parfums SET nom = ?, prix = ?, description = ?, details = ?, image = ? WHERE id = ?',
-        [newRow.nom, newRow.prix, newRow.description, newRow.details, newRow.image, req.params.id], (e) => {
-          if (e) return res.status(500).json({ message: 'Erreur DB', error: e.message });
-          // If a new image was uploaded, delete the previous file
-          if (image && row.image && row.image !== newRow.image) {
-            tryUnlink(row.image);
-          }
-          res.json({ id: Number(req.params.id), ...newRow });
-        });
-    });
+      if (isPg) {
+        const rows = await query('UPDATE parfums SET nom = ?, prix = ?, description = ?, details = ?, image = ? WHERE id = ? RETURNING *', [newRow.nom, newRow.prix, newRow.description, newRow.details, newRow.image, req.params.id]);
+        if (image && row.image && row.image !== newRow.image) tryUnlink(row.image);
+        return res.json(rows[0]);
+      } else {
+        await run('UPDATE parfums SET nom = ?, prix = ?, description = ?, details = ?, image = ? WHERE id = ?', [newRow.nom, newRow.prix, newRow.description, newRow.details, newRow.image, req.params.id]);
+        if (image && row.image && row.image !== newRow.image) tryUnlink(row.image);
+        return res.json({ id: Number(req.params.id), ...newRow });
+      }
+    } catch (e) {
+      return res.status(500).json({ message: 'Erreur DB', error: e.message });
+    }
   }
 );
 
 // DELETE parfum
-router.delete('/:id', verifyToken, (req, res) => {
-  db.get('SELECT image FROM parfums WHERE id = ?', [req.params.id], (err, row) => {
-    if (err) return res.status(500).json({ message: 'Erreur DB', error: err.message });
+router.delete('/:id', verifyToken, async (req, res) => {
+  try {
+    const row = await getOne('SELECT image FROM parfums WHERE id = ?', [req.params.id]);
     if (!row) return res.status(404).json({ message: 'Introuvable' });
-
-    db.run('DELETE FROM parfums WHERE id = ?', [req.params.id], function (e) {
-      if (e) return res.status(500).json({ message: 'Erreur DB', error: e.message });
-      if (this.changes === 0) return res.status(404).json({ message: 'Introuvable' });
-      // Best effort: delete associated image file
-      if (row.image) tryUnlink(row.image);
-      res.json({ success: true });
-    });
-  });
+    if (isPg) {
+      const del = await query('DELETE FROM parfums WHERE id = ? RETURNING id', [req.params.id]);
+      if (del.length === 0) return res.status(404).json({ message: 'Introuvable' });
+    } else {
+      const r = await run('DELETE FROM parfums WHERE id = ?', [req.params.id]);
+      if (!r.changes) return res.status(404).json({ message: 'Introuvable' });
+    }
+    if (row.image) tryUnlink(row.image);
+    return res.json({ success: true });
+  } catch (e) {
+    return res.status(500).json({ message: 'Erreur DB', error: e.message });
+  }
 });
 
 export default router;
