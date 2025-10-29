@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { getParfum, imageUrl } from '../api.js';
 import { slowFadeUp, slowScaleIn } from '../animations/variants.js';
+import { WHATSAPP_PHONE } from '../config.js';
 
 export default function ParfumDetail(){
   const { id } = useParams();
@@ -75,7 +76,13 @@ export default function ParfumDetail(){
             <span className="text-xl font-bold text-dark">{item.prix} CFA</span>
           </div>
           <a
-            href={`https://wa.me/${'+2290196486557'.replace(/^[+]/,'')}?text=${encodeURIComponent(`Bonjour, je veux commander le parfum ${item.nom} au prix de ${item.prix}.`)}`}
+            href={(function(){
+              const WHATSAPP = `+${WHATSAPP_PHONE}`;
+              const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+              const shareUrl = `${API_BASE}/share/parfums/${item.id}`;
+              const txt = [`Bonjour, je veux commander le parfum ${item.nom} au prix de ${item.prix} CFA.`, `Détails: ${shareUrl}`].join('\n');
+              return `https://wa.me/${WHATSAPP.replace(/^[+]/,'')}?text=${encodeURIComponent(txt)}`;
+            })()}
             target="_blank"
             rel="noreferrer"
             className="btn-primary inline-flex items-center justify-center"
