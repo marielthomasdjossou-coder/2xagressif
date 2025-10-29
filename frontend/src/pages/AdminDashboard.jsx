@@ -6,6 +6,8 @@ export default function AdminDashboard(){
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [deletingId, setDeletingId] = useState(null);
   const [editing, setEditing] = useState(null); // parfum object or null
   const [form, setForm] = useState({ nom: '', prix: '', description: '', details: '', imageFile: null });
   const navigate = useNavigate();
@@ -84,6 +86,8 @@ export default function AdminDashboard(){
       }
       await load();
       startCreate();
+      setSuccess(editing ? 'Parfum mis à jour.' : 'Parfum créé.');
+      setTimeout(()=>setSuccess(''), 2500);
     }catch(e){
       const msg = e.response?.data?.message || e.message || 'Erreur';
       setError(msg);
@@ -93,12 +97,27 @@ export default function AdminDashboard(){
   async function onDelete(id){
     if (!hasToken()) { alert('Connectez-vous d\'abord.'); return; }
     if (!confirm('Supprimer ce parfum ?')) return;
+    setDeletingId(id);
     try{
       await deleteParfum(id);
       await load();
+      setSuccess('Parfum supprimé.');
+      setTimeout(()=>setSuccess(''), 2000);
+      // Notifier la page publique pour rafraîchir la pagination si ouverte
+      try { window.dispatchEvent(new CustomEvent('parfum-deleted', { detail: { id } })); } catch(_) {}
     }catch(e){
-      const msg = e.response?.data?.message || e.message || 'Erreur';
-      setError(msg);
+      const status = e?.response?.status;
+      if (status === 404) {
+        // Déjà supprimé ailleurs: message non bloquant + refresh liste
+        await load();
+        setSuccess('Parfum déjà supprimé. Liste mise à jour.');
+        setTimeout(()=>setSuccess(''), 2000);
+      } else {
+        const msg = e.response?.data?.message || e.message || 'Erreur';
+        setError(msg);
+      }
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -114,6 +133,11 @@ export default function AdminDashboard(){
         {error && (
           <div className="rounded-xl border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-sm">
             {error}
+          </div>
+        )}
+        {success && (
+          <div className="rounded-xl border border-green-200 bg-green-50 text-green-700 px-4 py-3 text-sm">
+            {success}
           </div>
         )}
         <div className="grid sm:grid-cols-2 gap-3">
@@ -162,8 +186,10 @@ export default function AdminDashboard(){
               </div>
               <p className="text-gray-600 text-sm line-clamp-2">{p.description}</p>
               <div className="mt-3 flex gap-3">
-                <button onClick={()=>startEdit(p)} className="rounded-xl px-3 py-2 border">Modifier</button>
-                <button onClick={()=>onDelete(p.id)} className="rounded-xl px-3 py-2 border text-red-600 border-red-200">Supprimer</button>
+                <button onClick={()=>startEdit(p)} className="rounded-xl px-3 py-2 border" disabled={deletingId===p.id}>Modifier</button>
+                <button onClick={()=>onDelete(p.id)} disabled={deletingId===p.id} className={`rounded-xl px-3 py-2 border ${deletingId===p.id? 'opacity-60 cursor-not-allowed' : 'text-red-600 border-red-200'}`}>
+                  {deletingId===p.id ? 'Suppression…' : 'Supprimer'}
+                </button>
               </div>
             </div>
           ))
