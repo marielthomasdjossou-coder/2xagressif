@@ -2,12 +2,19 @@ import { motion } from 'framer-motion';
 import { slowFadeUp, slowScaleIn } from '../animations/variants.js';
 import { Link } from 'react-router-dom';
 import { imageUrl } from '../api.js';
+import { WHATSAPP_PHONE } from '../config.js';
 
-const WHATSAPP = '+2290196486557';
+const WHATSAPP = `+${WHATSAPP_PHONE}`;
 
 export default function ParfumCard({ parfum }) {
   const { id, nom, prix, description, image } = parfum;
-  const message = encodeURIComponent(`Bonjour, je veux commander le parfum ${nom} au prix de ${prix}.`);
+  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+  const shareUrl = `${API_BASE}/share/parfums/${id}`;
+  const textParts = [
+    `Bonjour, je veux commander le parfum ${nom} au prix de ${prix} CFA.`,
+    `Détails: ${shareUrl}`
+  ];
+  const message = encodeURIComponent(textParts.join('\n'));
   const wa = `https://wa.me/${WHATSAPP.replace(/^[+]/,'')}?text=${message}`;
 
   return (

@@ -58,6 +58,45 @@ try { fs.mkdirSync(uploadsDir, { recursive: true }); } catch (e) { /* ignore */ 
 // Static for uploaded images (with cache headers)
 app.use('/uploads', express.static(uploadsDir, { maxAge: '7d', immutable: true }));
 
+// Share page with Open Graph tags to generate rich preview (e.g., WhatsApp)
+const PUBLIC_SITE_URL = process.env.PUBLIC_SITE_URL || 'https://2xagressif.netlify.app';
+app.get('/share/parfums/:id', async (req, res) => {
+  try {
+    const row = await getOne('SELECT * FROM parfums WHERE id = ?', [req.params.id]);
+    if (!row) return res.status(404).send('Not found');
+    const productUrl = `${PUBLIC_SITE_URL}/parfums/${row.id}`;
+    const absImage = row.image ? `${req.protocol}://${req.get('host')}/${row.image}` : `${PUBLIC_SITE_URL}/favicon.ico`;
+    const title = `${row.nom} — ${row.prix} CFA`;
+    const desc = (row.description || '').toString().slice(0, 160);
+    const html = `<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${escapeHtml(title)}</title>
+  <meta property="og:type" content="product" />
+  <meta property="og:title" content="${escapeHtml(title)}" />
+  <meta property="og:description" content="${escapeHtml(desc)}" />
+  <meta property="og:image" content="${absImage}" />
+  <meta property="og:url" content="${productUrl}" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta http-equiv="refresh" content="0; url=${productUrl}" />
+</head>
+<body>
+  <p>Redirection vers <a href="${productUrl}">${productUrl}</a>…</p>
+</body>
+</html>`;
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res.send(html);
+  } catch (e) {
+    return res.status(500).send('Erreur');
+  }
+});
+
+function escapeHtml(s=''){
+  return s.replace(/[&<>"]+/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+
 // Auth: login
 app.post('/api/login', loginLimiter, async (req, res) => {
   const { username, password } = req.body;
